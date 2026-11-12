@@ -1,0 +1,78 @@
+diff --git a/app/api/api/v1/[[...path]]/route.js b/app/api/api/v1/[[...path]]/route.js
+index 485a267..0a2e6cb 100644
+--- a/app/api/api/v1/[[...path]]/route.js
++++ b/app/api/api/v1/[[...path]]/route.js
+@@ -1,5 +1,5 @@
+ import { NextResponse } from 'next/server';
+-import { handleNvidiaGet, handleNvidiaPost } from '../../../../../lib/nvidia/cosmos.js';
++import { handleNvidiaGet, handleNvidiaPost, isServerManaged, muapiUnavailable } from '../../../../../lib/nvidia/cosmos.js';
+ 
+ export const runtime = 'nodejs';
+ 
+@@ -30,6 +30,7 @@ export async function GET(request, { params }) {
+     // NVIDIA-backed jobs and balance stub are answered locally.
+     const nvidiaGet = await handleNvidiaGet(request, path);
+     if (nvidiaGet) return nvidiaGet;
++    if (isServerManaged(request)) return muapiUnavailable();
+ 
+     const { search } = new URL(request.url);
+     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
+@@ -57,6 +58,7 @@ export async function POST(request, { params }) {
+     // NVIDIA submit / local upload / cost-estimate stub are answered locally.
+     const nvidiaPost = await handleNvidiaPost(request, path);
+     if (nvidiaPost) return nvidiaPost;
++    if (isServerManaged(request)) return muapiUnavailable();
+ 
+     const { search } = new URL(request.url);
+     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
+diff --git a/app/api/app/[[...path]]/route.js b/app/api/app/[[...path]]/route.js
+index 098b4d1..fe0ef26 100644
+--- a/app/api/app/[[...path]]/route.js
++++ b/app/api/app/[[...path]]/route.js
+@@ -1,4 +1,5 @@
+ import { NextResponse } from 'next/server';
++import { isServerManaged } from '../../../../lib/nvidia/cosmos.js';
+ 
+ const MUAPI_BASE = 'https://api.muapi.ai';
+ 
+@@ -25,6 +26,13 @@ export async function GET(request, { params }) {
+     const slug = await params;
+     const pathSegments = slug.path || [];
+     const path = pathSegments.join('/');
++
++    // NVIDIA-only mode: no Muapi key, so answer the startup call locally.
++    if (isServerManaged(request)) {
++        return path === 'interests'
++            ? NextResponse.json([])
++            : NextResponse.json({ error: 'Muapi feature: only NVIDIA Video is enabled' }, { status: 501 });
++    }
+     
+     // Handle alias: get_upload_file -> get_file_upload_url
+     const effectivePath = path === 'get_upload_file' ? 'get_file_upload_url' : path;
+@@ -73,6 +81,10 @@ export async function POST(request, { params }) {
+     const slug = await params;
+     const pathSegments = slug.path || [];
+     const path = pathSegments.join('/');
++
++    if (isServerManaged(request)) {
++        return NextResponse.json({ error: 'Muapi feature: only NVIDIA Video is enabled' }, { status: 501 });
++    }
+     
+     const { search } = new URL(request.url);
+     const targetUrl = `${MUAPI_BASE}/app/${path}${search}`;
+diff --git a/lib/nvidia/cosmos.js b/lib/nvidia/cosmos.js
+index 4b3aca2..37bedc8 100644
+--- a/lib/nvidia/cosmos.js
++++ b/lib/nvidia/cosmos.js
+@@ -338,6 +338,11 @@ async function handleResult(request, id) {
+     return json(out);
+ }
+ 
++// Muapi-only features cannot work with the placeholder key used in NVIDIA-only mode.
++export const isServerManaged = (request) => request.headers.get('x-api-key') === 'server-managed';
++export const muapiUnavailable = () =>
++    json({ error: 'Muapi feature: only NVIDIA Video is enabled' }, 501);
++
+ export async function handleNvidiaPost(request, pathStr) {
+     const m = pathStr.match(MODEL_ENDPOINT);
+     if (m) return handleSubmit(request, m[1]);
