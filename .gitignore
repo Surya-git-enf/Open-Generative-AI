@@ -36,3 +36,7 @@ out/
 .env
 .env.*
 !.env.example
+
+# NVIDIA adapter local storage (generated videos, uploads, jobs)
+.nvidia-data/
+.env.local

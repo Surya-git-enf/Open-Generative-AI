@@ -35144,3 +35144,9 @@ export const audioModels = [
 ];
 
 export const getAudioModelById = (id) => audioModels.find(m => m.id === id);
+
+// ---- NVIDIA NIM video models (listed first so Cosmos3 Nano is the default) ----
+import { nvidiaT2VModels, nvidiaI2VModels, nvidiaV2VModels } from "./nvidiaModels.js";
+t2vModels.unshift(...nvidiaT2VModels);
+i2vModels.unshift(...nvidiaI2VModels);
+v2vModels.unshift(...nvidiaV2VModels);

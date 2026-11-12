@@ -582,6 +582,12 @@ export default function StandaloneShell({ locale = 'en' }) {
       fetchBalance(stored);
       // Sync cookie immediately on mount to establish identity for background requests
       document.cookie = `muapi_key=${stored}; path=/; max-age=31536000; SameSite=Lax`;
+    } else {
+      // Server-side NVIDIA_API_KEY configured: no browser key is needed.
+      fetch('/api/nvidia/status')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((st) => { if (st?.configured) setApiKey('server-managed'); })
+        .catch(() => {});
     }
   }, [fetchBalance]);
 

@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { handleNvidiaGet, handleNvidiaPost } from '../../../../../lib/nvidia/cosmos.js';
+
+export const runtime = 'nodejs';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
 
@@ -23,7 +26,11 @@ export async function GET(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
-    
+
+    // NVIDIA-backed jobs and balance stub are answered locally.
+    const nvidiaGet = await handleNvidiaGet(request, path);
+    if (nvidiaGet) return nvidiaGet;
+
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
 
@@ -46,7 +53,11 @@ export async function POST(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
-    
+
+    // NVIDIA submit / local upload / cost-estimate stub are answered locally.
+    const nvidiaPost = await handleNvidiaPost(request, path);
+    if (nvidiaPost) return nvidiaPost;
+
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
 
