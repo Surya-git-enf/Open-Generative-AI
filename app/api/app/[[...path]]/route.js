@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isServerManaged } from '../../../../lib/nvidia/cosmos.js';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
 
@@ -25,6 +26,13 @@ export async function GET(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
+
+    // NVIDIA-only mode: no Muapi key, so answer the startup call locally.
+    if (isServerManaged(request)) {
+        return path === 'interests'
+            ? NextResponse.json([])
+            : NextResponse.json({ error: 'Muapi feature: only NVIDIA Video is enabled' }, { status: 501 });
+    }
     
     // Handle alias: get_upload_file -> get_file_upload_url
     const effectivePath = path === 'get_upload_file' ? 'get_file_upload_url' : path;
@@ -73,6 +81,10 @@ export async function POST(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
+
+    if (isServerManaged(request)) {
+        return NextResponse.json({ error: 'Muapi feature: only NVIDIA Video is enabled' }, { status: 501 });
+    }
     
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/app/${path}${search}`;

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { handleNvidiaGet, handleNvidiaPost } from '../../../../../lib/nvidia/cosmos.js';
+import { handleNvidiaGet, handleNvidiaPost, isServerManaged, muapiUnavailable } from '../../../../../lib/nvidia/cosmos.js';
 
 export const runtime = 'nodejs';
 
@@ -30,6 +30,7 @@ export async function GET(request, { params }) {
     // NVIDIA-backed jobs and balance stub are answered locally.
     const nvidiaGet = await handleNvidiaGet(request, path);
     if (nvidiaGet) return nvidiaGet;
+    if (isServerManaged(request)) return muapiUnavailable();
 
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
@@ -57,6 +58,7 @@ export async function POST(request, { params }) {
     // NVIDIA submit / local upload / cost-estimate stub are answered locally.
     const nvidiaPost = await handleNvidiaPost(request, path);
     if (nvidiaPost) return nvidiaPost;
+    if (isServerManaged(request)) return muapiUnavailable();
 
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
